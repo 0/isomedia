@@ -111,9 +111,9 @@ class UserExtendedAtom(Atom):
     def get_data(self):
         return self._data
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join([written, self.get_data()])
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+        buf.write(self.get_data())
 
 class FtypAtom(Atom):
     def __init__(self, atom_header, atom_body, document, parent_atom, file_offset):
@@ -128,9 +128,9 @@ class FtypAtom(Atom):
         self.properties.update(interpret_atom(atom_body, definition))
         self._definition['FtypAtom'] = definition
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join([written, write_atom(self.properties, self._definition['FtypAtom'])])
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+        buf.write(write_atom(self.properties, self._definition['FtypAtom']))
 
 class MvhdAtom(FullAtom):
     def __init__(self, atom_header, atom_body, document, parent_atom, file_offset):
@@ -171,9 +171,9 @@ class MvhdAtom(FullAtom):
         self.properties.update(interpret_atom(atom_body, definition))
         self._definition['MvhdAtom'] = definition
 
-    def to_bytes(self):
-        written = FullAtom.to_bytes(self)
-        return ''.join([written, write_atom(self.properties, self._definition['MvhdAtom'])])
+    def _write_bytes(self, buf):
+        FullAtom._write_bytes(self, buf)
+        buf.write(write_atom(self.properties, self._definition['MvhdAtom']))
 
 ATOM_TYPE_TO_CLASS = {
     'free': FreeAtom,

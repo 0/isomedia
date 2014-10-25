@@ -192,8 +192,16 @@ class Atom(object):
         self._definition = {}
         self.properties = {}
 
+    def _write_bytes(self, buf):
+        buf.write(write_atom_header(self))
+
     def to_bytes(self):
-        return write_atom_header(self)
+        buf = StringIO.StringIO()
+        self._write_bytes(buf)
+        result = buf.getvalue()
+        buf.close()
+        assert len(result) == self.size
+        return result
 
     def __repr__(self):
         return str({
@@ -230,9 +238,9 @@ class FullAtom(Atom):
         self.properties.update(interpret_atom(atom_body, definition))
         self._definition['FullAtom'] = definition
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join([written, write_atom(self.properties, self._definition['FullAtom'])])
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+        buf.write(write_atom(self.properties, self._definition['FullAtom']))
 
 class ContainerAtom(Atom):
     def __init__(self, atom_header, atom_body, document, parent_atom, file_offset):
@@ -245,9 +253,11 @@ class ContainerAtom(Atom):
             'children': self.children
         })
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join(chain([written], (child.to_bytes() for child in self.children)))
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+
+        for child in self.children:
+            child._write_bytes(buf)
 
     def append_child(self, child):
         self.size += child.size
@@ -261,9 +271,9 @@ class GenericAtom(Atom):
     def get_data(self):
         return self._data
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join([written, self.get_data()])
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+        buf.write(self.get_data())
 
 class LazyLoadAtom(Atom):
     LOAD_DATA = False
@@ -280,9 +290,9 @@ class LazyLoadAtom(Atom):
 
         return self._data
 
-    def to_bytes(self):
-        written = Atom.to_bytes(self)
-        return ''.join([written, self.get_data()])
+    def _write_bytes(self, buf):
+        Atom._write_bytes(self, buf)
+        buf.write(self.get_data())
 
 def create_atom(atom_type, atom_body):
     body_length = len(atom_body)
